@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Piedra Papel Tijera Lagarto Spock</title>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@500&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Kanit', sans-serif;
+      text-align: center;
+      padding: 40px;
+      background: linear-gradient(135deg, #e0f7fa, #e1bee7);
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 40px;
+      margin-bottom: 20px;
+    }
+
+    #botones {
+      margin-bottom: 20px;
+    }
+
+    button {
+      margin: 8px;
+      padding: 12px 24px;
+      font-size: 18px;
+      border: none;
+      border-radius: 12px;
+      background: #673ab7;
+      color: white;
+      cursor: pointer;
+      transition: transform 0.2s, background 0.2s;
+    }
+
+    button:hover {
+      background: #5e35b1;
+      transform: scale(1.05);
+    }
+
+    #resultado {
+      margin-top: 20px;
+      font-size: 24px;
+      font-weight: bold;
+      background: rgba(255, 255, 255, 0.7);
+      display: inline-block;
+      padding: 15px 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    #rachaVictorias {
+      margin-top: 30px;
+      font-size: 30px;
+      font-weight: bold;
+      color: #fff;
+      background: linear-gradient(135deg, #ff7043, #ffcc80);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+      transition: transform 0.2s ease-in-out, background 0.5s ease;
+      display: inline-block;
+    }
+
+    #rachaVictorias:hover {
+      background: linear-gradient(135deg, #ff5722, #ff9800);
+      transform: scale(1.05);
+    }
+
+    #logros {
+      margin-top: 30px;
+      font-size: 18px;
+      text-align: left;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+      padding: 10px;
+      background-color: rgba(255, 255, 255, 0.9);
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      max-width: 90%;
+    }
+
+    #logros li {
+      margin: 12px 0;
+      padding: 10px;
+      background-color: #f3f3f3;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-width: 250px;
+      transition: background-color 0.3s ease;
+    }
+
+    #logros li:hover {
+      background-color: #e1e1e1;
+    }
+
+    .completado {
+      background-color: #4caf50; /* Verde brillante */
+      color: white; /* Texto blanco */
+      font-weight: bold;
+      text-transform: uppercase;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .footer {
+      margin-top: 40px;
+      font-size: 14px;
+      color: #555;
+    }
+
+    /* Estilos para la ruleta */
+    #ruleta {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      margin-top: 20px;
+      font-size: 40px;
+      width: 100%;
+      max-width: 600px;
+      padding: 20px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #ff7043, #ffcc80);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+      transition: transform 0.3s ease, background 0.5s ease;
+    }
+
+    #ruleta:hover {
+      transform: scale(1.05);
+      background: linear-gradient(135deg, #ff5722, #ff9800);
+    }
+
+    .ruleta-item {
+      width: 100px;
+      height: 100px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 50%;
+      background-color: #f3f3f3;
+      margin: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      font-size: 50px;
+      transition: transform 0.3s ease, background-color 0.3s ease;
+    }
+
+    #vs {
+      font-size: 50px;
+      color: #fff;
+      font-weight: bold;
+      background-color: rgba(0, 0, 0, 0.5);
+      padding: 15px 25px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+      text-transform: uppercase;
+      transition: transform 0.3s ease;
+    }
+
+    .ruleta-item:hover {
+      background-color: #673ab7;
+      transform: scale(1.1);
+      color: white;
+    }
+
+    /* Asegurarse que los elementos no se salgan de la pantalla */
+    @media (max-width: 768px) {
+      #ruleta {
+        flex-direction: column;
+      }
+    }
+
+  </style>
+</head>
+<body>
+  <h1>Piedra, Papel, Tijera, Lagarto, Spock</h1>
+
+  <div id="botones">
+    <button onclick="jugar('piedra')">🪨 Piedra</button>
+    <button onclick="jugar('papel')">📄 Papel</button>
+    <button onclick="jugar('tijera')">✂️ Tijera</button>
+    <button onclick="jugar('lagarto')">🦎 Lagarto</button>
+    <button onclick="jugar('spock')">🖖 Spock</button>
+  </div>
+
+  <div id="ruleta">
+    <div class="ruleta-item" id="ruletaIA">🤖</div>
+    <div id="vs">VS</div>
+    <div class="ruleta-item" id="ruletaJugador">🎮</div>
+  </div>
+
+  <div id="resultado">Haz tu elección para comenzar</div>
+  
+  <div id="rachaVictorias">Racha de victorias: 0</div>
+
+  <ul id="logros">
+    <li id="logro1"><span>🎯 Logro 1: Ganar 1 vez</span></li>
+    <li id="logro2"><span>🎯 Logro 2: Ganar 3 veces consecutivas</span></li>
+    <li id="logro3"><span>🎯 Logro 3: Ganar con cada opción (Piedra, Papel, Tijera, Lagarto, Spock)</span></li>
+    <li id="logro4"><span>🎯 Logro 4: Perder 5 veces consecutivas</span></li>
+    <li id="logro5"><span>🎯 Logro 5: Ganar todas las partidas en una sesión</span></li>
+    <li id="logro6"><span>🎯 Logro 6: Jugar más de 10 partidas</span></li>
+    <li id="logro7"><span>🎯 Logro 7: Conseguir 5 victorias seguidas</span></li>
+  </ul>
+
+  <div class="footer">
+    Creado con 💜 por un friki del código
+  </div>
+
+  <script>
+    const reglas = {
+      piedra: ['tijera', 'lagarto'],
+      papel: ['piedra', 'spock'],
+      tijera: ['papel', 'lagarto'],
+      lagarto: ['spock', 'papel'],
+      spock: ['tijera', 'piedra']
+    };
+
+    const emojis = {
+      piedra: '🪨',
+      papel: '📄',
+      tijera: '✂️',
+      lagarto: '🦎',
+      spock: '🖖'
+    };
+
+    let rachaVictorias = 0; // Contador de victorias consecutivas
+    let victoriasTotales = 0; // Total de victorias
+    let derrotasConsecutivas = 0; // Para el logro de perder consecutivamente
+    let jugadas = { piedra: 0, papel: 0, tijera: 0, lagarto: 0, spock: 0 }; // Registro de jugadas
+    let partidasJugadas = 0; // Para el logro de jugar más de 10 partidas
+
+    function jugar(eleccionJugador) {
+      const opciones = Object.keys(reglas);
+      let contador = 0;
+      let intervalo;
+
+      document.getElementById('resultado').textContent = 'Pensando... 🤔';
+      document.getElementById('resultado').style.background = 'rgba(255,255,255,0.7)';
+
+      intervalo = setInterval(() => {
+        const opcionAleatoria = opciones[Math.floor(Math.random() * opciones.length)];
+        document.getElementById('ruletaIA').textContent = emojis[opcionAleatoria];
+        document.getElementById('ruletaJugador').textContent = emojis[eleccionJugador];
+        contador++;
+
+        if (contador >= 20) {
+          clearInterval(intervalo);
+
+          const eleccionCPU = opciones[Math.floor(Math.random() * opciones.length)];
+          document.getElementById('ruletaIA').textContent = emojis[eleccionCPU];
+
+          let resultado = '';
+          if (eleccionJugador === eleccionCPU) {
+            resultado = `😐 Empate. Ambos eligieron ${eleccionJugador}.`;
+            document.getElementById('resultado').style.background = 'rgba(255,241,118,0.8)';
+          } else if (reglas[eleccionJugador].includes(eleccionCPU)) {
+            resultado = `🎉 ¡Ganaste! ${eleccionJugador} gana a ${eleccionCPU}.`;
+            rachaVictorias++;
+            victoriasTotales++;
+            document.getElementById('resultado').style.background = 'rgba(129,199,132,0.8)';
+          } else {
+            resultado = `💀 Perdiste. ${eleccionCPU} gana a ${eleccionJugador}.`;
+            rachaVictorias = 0;
+            document.getElementById('resultado').style.background = 'rgba(239,83,80,0.8)';
+          }
+
+          document.getElementById('resultado').textContent = resultado;
+
+          // Actualizar la racha de victorias
+          document.getElementById('rachaVictorias').textContent = `Racha de victorias: ${rachaVictorias}`;
+
+          // Actualizar logros
+          actualizarLogros();
+        }
+      }, 100);
+    }
+
+    function actualizarLogros() {
+      // Logro 1
+      if (victoriasTotales >= 1) {
+        document.getElementById('logro1').classList.add('completado');
+      }
+      
+      // Logro 2
+      if (rachaVictorias >= 3) {
+        document.getElementById('logro2').classList.add('completado');
+      }
+
+      // Logro 3
+      if (Object.values(jugadas).every(v => v >= 1)) {
+        document.getElementById('logro3').classList.add('completado');
+      }
+
+      // Logro 4
+      if (derrotasConsecutivas >= 5) {
+        document.getElementById('logro4').classList.add('completado');
+      }
+
+      // Logro 5
+      if (victoriasTotales >= 5) {
+        document.getElementById('logro5').classList.add('completado');
+      }
+
+      // Logro 6
+      if (partidasJugadas >= 10) {
+        document.getElementById('logro6').classList.add('completado');
+      }
+
+      // Logro 7
+      if (rachaVictorias >= 5) {
+        document.getElementById('logro7').classList.add('completado');
+      }
+    }
+  </script>
+</body>
+</html>
