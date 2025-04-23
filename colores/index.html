@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Juego de Memoria de Colores</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      text-align: center;
+      background: linear-gradient(135deg, #dbeafe, #fcd34d);
+      margin: 0;
+      padding: 50px 20px;
+      position: relative;
+    }
+
+    h1 {
+      font-size: 2.5em;
+      color: #1e3a8a;
+      margin-bottom: 10px;
+    }
+
+    p {
+      font-size: 1.2em;
+      margin-bottom: 20px;
+    }
+
+    button {
+      background-color: #3b82f6;
+      color: white;
+      font-size: 1.1em;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+
+    button:hover {
+      background-color: #2563eb;
+    }
+
+    #scoreDisplay {
+      font-size: 1.3em;
+      margin: 20px 0;
+      color: #1e293b;
+    }
+
+    .color-boxes {
+      margin: 40px auto;
+      display: grid;
+      grid-template-columns: repeat(2, 120px);
+      gap: 20px;
+      justify-content: center;
+    }
+
+    .box {
+      width: 120px;
+      height: 120px;
+      border-radius: 20px;
+      opacity: 0.7;
+      transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+
+    .box.active {
+      opacity: 1;
+      box-shadow: 0 0 20px 8px white;
+      transform: scale(1.05);
+    }
+
+    #message {
+      margin-top: 20px;
+      font-size: 20px;
+      color: #1f2937;
+    }
+
+    #message.error {
+      background-color: #fecaca;
+      color: #b91c1c;
+      border: 2px solid #f87171;
+      padding: 15px;
+      border-radius: 12px;
+      margin-top: 30px;
+      font-weight: bold;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+      box-shadow: 0 0 10px rgba(255,0,0,0.2);
+      transition: all 0.3s ease;
+    }
+
+    #achievements {
+      margin-top: 40px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      justify-items: center;
+    }
+
+    .achievement {
+      width: 80%;
+      height: 60px;
+      background-color: #e0e7ff;
+      border-radius: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 14px;
+      font-weight: bold;
+      color: #1e293b;
+      cursor: pointer;
+      transition: background-color 0.3s, box-shadow 0.3s;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      padding: 0 15px;
+    }
+
+    .achievement.completed {
+      background-color: #22c55e;
+      color: white;
+      box-shadow: 0 0 20px 5px rgba(34, 197, 94, 0.6);
+    }
+
+    .achievement span {
+      text-align: center;
+      display: block;
+      font-size: 16px;
+    }
+
+    /* Fuegos Artificiales */
+    .fireworks {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      z-index: 999;
+      display: none;
+    }
+
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0;
+      animation: explosion 2s ease-out forwards;
+    }
+
+    @keyframes explosion {
+      0% {
+        transform: scale(0) translate(0, 0);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(1) translate(var(--x), var(--y));
+        opacity: 0;
+      }
+    }
+
+  </style>
+</head>
+<body>
+  <h1>🧠 Juego de Memoria de Colores</h1>
+  <p>Memoriza y repite la secuencia. ¡Cada ronda será más difícil!</p>
+  <button onclick="startGame()">🎮 Iniciar Juego</button>
+
+  <h2 id="scoreDisplay">Puntuación: 0</h2>
+
+  <div class="color-boxes" id="colorBoxes"></div>
+  <div id="message"></div>
+
+  <div id="achievements">
+    <div class="achievement" id="achievement1">
+      <span>Llega a ronda 5</span>
+    </div>
+    <div class="achievement" id="achievement2">
+      <span>Llega a ronda 10</span>
+    </div>
+    <div class="achievement" id="achievement3">
+      <span>Llega a ronda 15</span>
+    </div>
+    <div class="achievement" id="achievement4">
+      <span>Llega a ronda 20</span>
+    </div>
+    <div class="achievement" id="achievement5">
+      <span>Llega a ronda 25</span>
+    </div>
+    <div class="achievement" id="achievement6">
+      <span>Llega a ronda 30</span>
+    </div>
+  </div>
+
+  <div class="fireworks" id="fireworks"></div>
+
+  <script>
+    const colors = ["red", "blue", "green", "yellow"];
+    const colorNames = {
+      red: "Rojo",
+      blue: "Azul",
+      green: "Verde",
+      yellow: "Amarillo"
+    };
+
+    const colorBoxes = document.getElementById("colorBoxes");
+    const message = document.getElementById("message");
+    const fireworks = document.getElementById("fireworks");
+    let sequence = [];
+    let userSequence = [];
+    let clickable = false;
+    let score = 0;
+
+    // Logros
+    const achievements = {
+      5: document.getElementById("achievement1"),
+      10: document.getElementById("achievement2"),
+      15: document.getElementById("achievement3"),
+      20: document.getElementById("achievement4"),
+      25: document.getElementById("achievement5"),
+      30: document.getElementById("achievement6")
+    };
+
+    function createColorBoxes() {
+      colorBoxes.innerHTML = "";
+      colors.forEach(color => {
+        const box = document.createElement("div");
+        box.className = "box";
+        box.style.backgroundColor = color;
+        box.onclick = () => {
+          if (!clickable) return;
+          userSequence.push(color);
+          flash(box);
+          checkSequence();
+        };
+        colorBoxes.appendChild(box);
+      });
+    }
+
+    function flash(box) {
+      box.classList.add("active");
+      setTimeout(() => {
+        box.classList.remove("active");
+      }, 400);
+    }
+
+    function playSequence() {
+      let i = 0;
+      clickable = false;
+      const interval = setInterval(() => {
+        const color = sequence[i];
+        const box = [...colorBoxes.children].find(b => b.style.backgroundColor === color);
+        flash(box);
+        i++;
+        if (i >= sequence.length) {
+          clearInterval(interval);
+          clickable = true;
+          userSequence = [];
+        }
+      }, 700);
+    }
+
+    function checkSequence() {
+      const index = userSequence.length - 1;
+      if (userSequence[index] !== sequence[index]) {
+        message.className = "error";
+        message.innerHTML = `
+          ❌ <strong>¡Has fallado!</strong><br><br>
+          <div>🔁 <strong>Secuencia correcta:</strong> ${sequence.map(c => colorNames[c]).join(" → ")}</div>
+          <div>🏅 <strong>Tu puntuación final:</strong> ${score}</div>
+          <br>
+          <em>¡Inténtalo de nuevo y mejora tu memoria!</em>
+        `;
+        clickable = false;
+        return;
+      }
+
+      if (userSequence.length === sequence.length) {
+        score++;
+        updateScoreDisplay();
+        message.textContent = "✅ ¡Bien hecho! Próxima ronda...";
+        message.className = "";
+        setTimeout(nextRound, 1000);
+      }
+    }
+
+    function nextRound() {
+      message.textContent = "";
+      const nextColor = colors[Math.floor(Math.random() * colors.length)];
+      sequence.push(nextColor);
+      playSequence();
+      checkAchievements();
+    }
+
+    function updateScoreDisplay() {
+      document.getElementById("scoreDisplay").textContent = `Puntuación: ${score}`;
+    }
+
+    function startGame() {
+      sequence = [];
+      score = 0;
+      updateScoreDisplay();
+      message.textContent = "¡Prepárate!";
+      message.className = "";
+      nextRound();
+    }
+
+    function checkAchievements() {
+      for (let i = 5; i <= 30; i += 5) {
+        if (score >= i && !achievements[i].classList.contains('completed')) {
+          achievements[i].classList.add('completed');
+          triggerFireworks();
+        }
+      }
+    }
+
+    function triggerFireworks() {
+      fireworks.style.display = 'block';
+      for (let i = 0; i < 100; i++) { // Muchísimas más partículas
+        createParticle();
+      }
+      setTimeout(() => {
+        fireworks.style.display = 'none';
+      }, 3000); // Mostrar los fuegos por más tiempo
+    }
+
+    function createParticle() {
+      const particle = document.createElement("div");
+      particle.className = "particle";
+      const size = Math.random() * 20 + 10; // Partículas mucho más grandes
+      const x = Math.random() * window.innerWidth - 50;
+      const y = Math.random() * window.innerHeight - 50;
+      particle.style.width = `${size}px`;
+      particle.style.height = `${size}px`;
+      particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+      particle.style.left = `${x}px`;
+      particle.style.top = `${y}px`;
+      particle.style.animationDuration = `${Math.random() * 2 + 1}s`; // Animación más lenta
+      particle.style.setProperty('--x', `${Math.random() * 1000 - 500}px`);
+      particle.style.setProperty('--y', `${Math.random() * 1000 - 500}px`);
+      fireworks.appendChild(particle);
+      setTimeout(() => {
+        particle.remove();
+      }, 2500); // El tiempo de vida de cada partícula
+    }
+
+    createColorBoxes();
+  </script>
+</body>
+</html>
+

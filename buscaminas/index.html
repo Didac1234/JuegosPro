@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscaminas</title>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #e0f7fa;
+            margin: 0;
+            flex-direction: column;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            font-size: 36px;
+            font-weight: bold;
+            color: #00796b;
+        }
+
+        .game-container {
+            text-align: center;
+            border-radius: 8px;
+            padding: 20px;
+            background-color: #ffffff;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            border: 2px solid #00796b;
+        }
+
+        table {
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        td {
+            width: 40px;
+            height: 40px;
+            text-align: center;
+            vertical-align: middle;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            border: 1px solid #00796b;
+            background-color: #80deea;
+            transition: background-color 0.2s, transform 0.1s;
+            border-radius: 5px;
+        }
+
+        td.revealed {
+            background-color: #b2dfdb;
+            color: #00796b;
+        }
+
+        td.mine {
+            background-color: #e57373;
+            color: white;
+        }
+
+        td.flagged {
+            background-color: #ffeb3b;
+            color: #f57f17;
+        }
+
+        td.empty {
+            background-color: #e0f7fa;
+        }
+
+        td:hover {
+            background-color: #4db6ac;
+        }
+
+        .game-info {
+            margin-bottom: 20px;
+            color: #00796b;
+        }
+
+        .game-info p {
+            font-size: 18px;
+            margin: 5px;
+        }
+
+        .reset-btn {
+            padding: 12px 25px;
+            font-size: 18px;
+            background-color: #00796b;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 20px; /* Agregado para crear una separación entre la cuadrícula y el botón */
+        }
+
+        .reset-btn:hover {
+            background-color: #004d40;
+        }
+
+        .game-over {
+            color: #f44336;
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .victory {
+            color: #4caf50;
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <h1>Buscaminas</h1>
+        <div class="game-info">
+            <p><span id="mines-left">Minas restantes: 40</span></p>
+            <p><span id="timer">Tiempo: 0s</span></p>
+            <p id="game-status"></p>
+        </div>
+        <table id="grid"></table>
+        <button class="reset-btn" onclick="startGame()">Reiniciar Juego</button>
+    </div>
+
+    <script>
+        const rows = 15;
+        const cols = 15;
+        const totalMines = 40;
+        let grid = [];
+        let gameOver = false;
+        let minesLeft = totalMines;
+        let timer;
+        let timeElapsed = 0;
+        let gameInterval;
+        let flagsPlaced = 0;
+
+        // Crear la cuadrícula
+        function createGrid() {
+            const table = document.getElementById('grid');
+            table.innerHTML = '';
+            grid = [];
+            for (let r = 0; r < rows; r++) {
+                let row = [];
+                let tr = document.createElement('tr');
+                for (let c = 0; c < cols; c++) {
+                    let td = document.createElement('td');
+                    td.addEventListener('click', () => reveal(r, c));
+                    td.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        toggleFlag(r, c);
+                    });
+                    tr.appendChild(td);
+                    row.push({ revealed: false, mine: false, neighborMines: 0, flagged: false });
+                }
+                table.appendChild(tr);
+                grid.push(row);
+            }
+        }
+
+        // Colocar minas aleatorias
+        function placeMines() {
+            let placedMines = 0;
+            while (placedMines < totalMines) {
+                let r = Math.floor(Math.random() * rows);
+                let c = Math.floor(Math.random() * cols);
+                if (!grid[r][c].mine) {
+                    grid[r][c].mine = true;
+                    placedMines++;
+                }
+            }
+        }
+
+        // Calcular las minas vecinas
+        function calculateNeighbors() {
+            const directions = [
+                [-1, -1], [-1, 0], [-1, 1],
+                [0, -1], [0, 1],
+                [1, -1], [1, 0], [1, 1]
+            ];
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (grid[r][c].mine) continue;
+                    let count = 0;
+                    for (let dir of directions) {
+                        let nr = r + dir[0], nc = c + dir[1];
+                        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && grid[nr][nc].mine) {
+                            count++;
+                        }
+                    }
+                    grid[r][c].neighborMines = count;
+                }
+            }
+        }
+
+        // Revelar celda
+        function reveal(r, c) {
+            if (gameOver || grid[r][c].revealed || grid[r][c].flagged) return;
+            grid[r][c].revealed = true;
+            const td = document.getElementsByTagName("tr")[r].children[c];
+            td.classList.add('revealed');
+
+            if (grid[r][c].mine) {
+                td.classList.add('mine');
+                td.textContent = '💥';
+                gameOver = true;
+                document.getElementById('game-status').textContent = '¡Perdiste!';
+                showAllMines();
+                clearInterval(gameInterval);
+            } else {
+                td.textContent = grid[r][c].neighborMines || '';
+                if (grid[r][c].neighborMines === 0) {
+                    revealNeighbors(r, c);
+                }
+            }
+
+            updateGameStatus();
+        }
+
+        // Revelar todos las minas al perder
+        function showAllMines() {
+            setTimeout(() => {
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        if (grid[r][c].mine && !grid[r][c].flagged) {
+                            const td = document.getElementsByTagName("tr")[r].children[c];
+                            td.classList.add('mine');
+                            td.textContent = '💥';
+                        }
+                    }
+                }
+            }, 500);
+        }
+
+        // Revelar vecinos automáticamente
+        function revealNeighbors(r, c) {
+            const directions = [
+                [-1, -1], [-1, 0], [-1, 1],
+                [0, -1], [0, 1],
+                [1, -1], [1, 0], [1, 1]
+            ];
+
+            for (let dir of directions) {
+                let nr = r + dir[0], nc = c + dir[1];
+                if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && !grid[nr][nc].revealed) {
+                    reveal(nr, nc);
+                }
+            }
+        }
+
+        // Colocar o quitar banderas
+        function toggleFlag(r, c) {
+            if (gameOver || grid[r][c].revealed) return;
+            const td = document.getElementsByTagName("tr")[r].children[c];
+
+            if (grid[r][c].flagged) {
+                grid[r][c].flagged = false;
+                td.classList.remove('flagged');
+                td.textContent = '';
+                minesLeft++;
+                flagsPlaced--;
+            } else if (flagsPlaced < totalMines) {
+                grid[r][c].flagged = true;
+                td.classList.add('flagged');
+                td.textContent = '🚩';
+                minesLeft--;
+                flagsPlaced++;
+            }
+
+            updateGameStatus();
+        }
+
+        // Actualizar el estado del juego
+        function updateGameStatus() {
+            document.getElementById('mines-left').textContent = `Minas restantes: ${minesLeft}`;
+            if (minesLeft === 0 && !gameOver && checkVictory()) {
+                gameOver = true;
+                document.getElementById('game-status').textContent = '¡Ganaste!';
+                clearInterval(gameInterval);
+            }
+        }
+
+        // Comprobar victoria
+        function checkVictory() {
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (!grid[r][c].mine && !grid[r][c].revealed) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        // Iniciar el juego
+        function startGame() {
+            createGrid();
+            placeMines();
+            calculateNeighbors();
+            gameOver = false;
+            minesLeft = totalMines;
+            flagsPlaced = 0;
+            document.getElementById('game-status').textContent = '';
+            clearInterval(gameInterval);
+            timeElapsed = 0;
+            document.getElementById('timer').textContent = `Tiempo: 0s`;
+
+            gameInterval = setInterval(() => {
+                if (!gameOver) {
+                    timeElapsed++;
+                    document.getElementById('timer').textContent = `Tiempo: ${timeElapsed}s`;
+                }
+            }, 1000);
+        }
+
+        startGame();
+    </script>
+
+</body>
+</html>
+
