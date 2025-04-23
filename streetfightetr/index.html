@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Street Fighter JS</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    canvas { background: #111; display: block; margin: 0 auto; }
+    body { background: #000; color: white; text-align: center; font-family: sans-serif; }
+    h1 { font-size: 40px; color: white; margin-top: 20px; }
+    #game { border: 2px solid #fff; }
+
+    /* Barra de tiempo */
+    #timer { font-size: 30px; position: absolute; top: 20px; left: 50%; transform: translateX(-50%); color: white; }
+
+    /* Barra de salud */
+    .health-bar { width: 200px; height: 20px; background-color: #333; border-radius: 5px; position: absolute; }
+    .health { height: 100%; background-color: green; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <h1>Street Fighter JS</h1>
+  <canvas id="game" width="800" height="400"></canvas>
+  <div id="timer"></div>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+
+    const gravity = 0.8;
+    let animationId;
+    let timer = 60;  // 1 minuto
+    let timerId;
+    let gameOver = false;
+
+    // Cargar los sonidos
+    const punchSound = new Audio('https://www.soundjay.com/button/beep-07.wav');
+    const kickSound = new Audio('https://www.soundjay.com/button/beep-07.wav');
+    const specialSound = new Audio('https://www.soundjay.com/button/beep-07.wav');
+    const jumpSound = new Audio('https://www.soundjay.com/button/beep-07.wav');
+    const gameOverSound = new Audio('https://www.soundjay.com/button/beep-07.wav');
+
+    // Sprites de los personajes
+    const ryuSprites = {
+      idle: '/streetfightetr/imagenes/Ken-hdstance.webp',
+      punch: 'https://wiki.supercombo.gg/images/thumb/d/de/SF6_Ryu_236p_charge.png/251px-SF6_Ryu_236p_charge.png',
+      kick: 'https://wiki.supercombo.gg/images/thumb/d/de/SF6_Ryu_236p_charge.png/251px-SF6_Ryu_236p_charge.png',
+      special: 'https://wiki.supercombo.gg/images/thumb/d/de/SF6_Ryu_236p_charge.png/251px-SF6_Ryu_236p_charge.png'
+    };
+
+    const kenSprites = {
+      idle: 'https://static.wikia.nocookie.net/projectcrusade/images/a/a9/Ryu_Artwork.png/revision/latest?cb=20220711031515',
+      punch: 'https://www.spriters-resource.com/resources/sheets/10/11881.png',
+      kick: 'https://www.spriters-resource.com/resources/sheets/10/11882.png',
+      special: 'https://www.spriters-resource.com/resources/sheets/10/11883.png'
+    };
+
+    // Clase de luchador
+    class Fighter {
+      constructor({ position, imageSrcs, keys, attacks }) {
+        this.position = position;
+        this.velocity = { x: 0, y: 0 };
+        this.width = 80;
+        this.height = 120;
+        this.health = 100;
+        this.keys = keys;
+        this.attacks = attacks;
+        this.isAttacking = false;
+        this.attackType = null;
+        this.currentImage = new Image();
+        this.imageSrcs = imageSrcs;
+        this.currentImage.src = this.imageSrcs.idle;
+        this.hitEffect = false;
+      }
+
+      draw() {
+        ctx.drawImage(this.currentImage, this.position.x, this.position.y, this.width, this.height);
+      }
+
+      update() {
+        this.draw();
+        this.position.x += this.velocity.x;
+        this.position.y += this.velocity.y;
+
+        if (this.position.y + this.height < canvas.height) {
+          this.velocity.y += gravity;
+        } else {
+          this.velocity.y = 0;
+          this.position.y = canvas.height - this.height;
+        }
+
+        if (this.hitEffect) {
+          ctx.fillStyle = "rgba(255, 0, 0, 0.6)";
+          ctx.fillRect(this.position.x, this.position.y, this.width, this.height);
+          setTimeout(() => { this.hitEffect = false; }, 100);
+        }
+      }
+
+      attack(type) {
+        this.isAttacking = true;
+        this.attackType = type;
+        this.currentImage.src = this.imageSrcs[type];
+        setTimeout(() => {
+          this.isAttacking = false;
+          this.attackType = null;
+          this.currentImage.src = this.imageSrcs.idle;
+        }, 200);
+        // Sonido del ataque
+        if (type === "punch") {
+          punchSound.play();
+        } else if (type === "kick") {
+          kickSound.play();
+        } else if (type === "special") {
+          specialSound.play();
+        }
+      }
+
+      receiveDamage(amount) {
+        this.health -= amount;
+        this.hitEffect = true;
+      }
+    }
+
+    const player = new Fighter({
+      position: { x: 100, y: 0 },
+      imageSrcs: ryuSprites,
+      keys: { left: "a", right: "d", jump: "w", punch: "q", kick: "e", special: "r" },
+      attacks: { punch: 5, kick: 8, special: 12 }
+    });
+
+    const enemy = new Fighter({
+      position: { x: 600, y: 0 },
+      imageSrcs: kenSprites,
+      keys: { left: "ArrowLeft", right: "ArrowRight", jump: "ArrowUp", punch: "1", kick: "2", special: "3" },
+      attacks: { punch: 6, kick: 9, special: 14 }
+    });
+
+    const keysPressed = {};
+
+    function detectCollision(attacker, defender) {
+      return (
+        attacker.position.x + attacker.width + 20 >= defender.position.x &&
+        attacker.position.x <= defender.position.x + defender.width &&
+        attacker.position.y + 20 <= defender.position.y + defender.height &&
+        attacker.position.y + 20 >= defender.position.y
+      );
+    }
+
+    function drawHealthBar(fighter, x) {
+      ctx.fillStyle = "gray";
+      ctx.fillRect(x, 20, 200, 20);
+      ctx.fillStyle = "green";
+      ctx.fillRect(x, 20, 2 * fighter.health, 20);
+    }
+
+    function drawTimer() {
+      ctx.fillStyle = 'white';
+      ctx.font = '30px Arial';
+      ctx.fillText(`Tiempo: ${timer}s`, canvas.width / 2 - 60, 50);
+    }
+
+    function checkWinCondition() {
+      if (player.health <= 0) {
+        gameOverSound.play();
+        ctx.fillStyle = 'white';
+        ctx.font = '40px Arial';
+        ctx.fillText('¡Ken gana!', canvas.width / 2 - 100, canvas.height / 2);
+        cancelAnimationFrame(animationId);
+        gameOver = true;
+      } else if (enemy.health <= 0) {
+        gameOverSound.play();
+        ctx.fillStyle = 'white';
+        ctx.font = '40px Arial';
+        ctx.fillText('¡Ryu gana!', canvas.width / 2 - 100, canvas.height / 2);
+        cancelAnimationFrame(animationId);
+        gameOver = true;
+      } else if (timer <= 0) {
+        if (player.health > enemy.health) {
+          ctx.fillStyle = 'white';
+          ctx.font = '40px Arial';
+          ctx.fillText('¡Ryu gana por tiempo!', canvas.width / 2 - 150, canvas.height / 2);
+        } else if (enemy.health > player.health) {
+          ctx.fillStyle = 'white';
+          ctx.font = '40px Arial';
+          ctx.fillText('¡Ken gana por tiempo!', canvas.width / 2 - 150, canvas.height / 2);
+        } else {
+          ctx.fillStyle = 'white';
+          ctx.font = '40px Arial';
+          ctx.fillText('¡Empate por tiempo!', canvas.width / 2 - 130, canvas.height / 2);
+        }
+        cancelAnimationFrame(animationId);
+        gameOver = true;
+      }
+    }
+
+    function updateTimer() {
+      if (!gameOver) {
+        timer--;
+        document.getElementById('timer').innerText = `Tiempo: ${timer}s`;
+        if (timer <= 0) {
+          checkWinCondition();
+        }
+      }
+    }
+
+    setInterval(updateTimer, 1000);
+
+    function animate() {
+      animationId = requestAnimationFrame(animate);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      player.update();
+      enemy.update();
+
+      drawHealthBar(player, 20);
+      drawHealthBar(enemy, canvas.width - 220);
+
+      drawTimer();
+
+      player.velocity.x = 0;
+      enemy.velocity.x = 0;
+
+      if (keysPressed[player.keys.left]) player.velocity.x = -5;
+      if (keysPressed[player.keys.right]) player.velocity.x = 5;
+      if (keysPressed[enemy.keys.left]) enemy.velocity.x = -5;
+      if (keysPressed[enemy.keys.right]) enemy.velocity.x = 5;
+
+      if (player.isAttacking && detectCollision(player, enemy)) {
+        enemy.receiveDamage(player.attacks[player.attackType]);
+        player.isAttacking = false;
+      }
+
+      if (enemy.isAttacking && detectCollision(enemy, player)) {
+        player.receiveDamage(enemy.attacks[enemy.attackType]);
+        enemy.isAttacking = false;
+      }
+
+      checkWinCondition();
+    }
+
+    window.addEventListener("keydown", (event) => {
+      keysPressed[event.key] = true;
+
+      if (event.key === player.keys.jump && player.velocity.y === 0) {
+        player.velocity.y = -12;
+        jumpSound.play();
+      }
+      if (event.key === enemy.keys.jump && enemy.velocity.y === 0) {
+        enemy.velocity.y = -12;
+        jumpSound.play();
+      }
+
+      if (event.key === player.keys.punch) player.attack('punch');
+      if (event.key === player.keys.kick) player.attack('kick');
+      if (event.key === player.keys.special) player.attack('special');
+
+      if (event.key === enemy.keys.punch) enemy.attack('punch');
+      if (event.key === enemy.keys.kick) enemy.attack('kick');
+      if (event.key === enemy.keys.special) enemy.attack('special');
+    });
+
+    window.addEventListener("keyup", (event) => {
+      keysPressed[event.key] = false;
+    });
+
+    animate();
+  </script>
+</body>
+</html>
+
