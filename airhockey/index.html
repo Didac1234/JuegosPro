@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Air Hockey</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #1a1a1a;
+        }
+
+        canvas {
+            border: 5px solid #fff;
+            background: linear-gradient(to bottom, #0d1b2a, #1b2a3f);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+        }
+
+        #scoreboard {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 42px;
+            color: #fff;
+            font-family: 'Orbitron', sans-serif;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 25px;
+            border-radius: 15px;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+            border: 2px solid #fff;
+            transition: transform 0.3s ease;
+        }
+
+        #scoreboard.flash {
+            transform: translateX(-50%) scale(1.2);
+        }
+    </style>
+</head>
+<body>
+    <div id="scoreboard">0 - 0</div>
+    <canvas id="airHockeyCanvas" width="800" height="400"></canvas>
+
+    <script>
+        const canvas = document.getElementById("airHockeyCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const paddleWidth = 20, paddleHeight = 100;
+        const puckRadius = 15;
+
+        let paddle1 = { x: 10, y: canvas.height / 2 - paddleHeight / 2, dy: 0 };
+        let paddle2 = { x: canvas.width - paddleWidth - 10, y: canvas.height / 2 - paddleHeight / 2, dy: 0 };
+        let puck = { x: canvas.width / 2, y: canvas.height / 2, dx: 4, dy: 4 };
+        let gameResetting = false;
+        let gameStarted = false;
+
+        let score1 = 0;
+        let score2 = 0;
+
+        const paddle1Color = '#ff6347';
+        const paddle2Color = '#1e90ff';
+        const puckColor = '#ff6347';
+        const glowColor = 'rgba(255, 255, 255, 0.6)';
+        const borderColor = '#FFD700';
+
+        function drawPaddle(x, y, color) {
+            ctx.fillStyle = color;
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x + 10, y);
+            ctx.lineTo(x + paddleWidth - 10, y);
+            ctx.quadraticCurveTo(x + paddleWidth, y, x + paddleWidth, y + paddleHeight);
+            ctx.lineTo(x + 10, y + paddleHeight);
+            ctx.quadraticCurveTo(x, y + paddleHeight, x, y);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        function drawPuck(x, y) {
+            ctx.fillStyle = puckColor;
+            ctx.shadowColor = glowColor;
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.arc(x, y, puckRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+
+        function drawScoreboard() {
+            const scoreboard = document.getElementById("scoreboard");
+            scoreboard.textContent = `${score1} - ${score2}`;
+            scoreboard.classList.add("flash");
+            setTimeout(() => scoreboard.classList.remove("flash"), 200);
+        }
+
+        function drawGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = borderColor;
+            ctx.lineWidth = 5;
+            ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+            ctx.setLineDash([10, 5]);
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            if (gameResetting) {
+                drawPaddle(paddle1.x, canvas.height / 2 - paddleHeight / 2, paddle1Color);
+                drawPaddle(paddle2.x, canvas.height / 2 - paddleHeight / 2, paddle2Color);
+                drawPuck(canvas.width / 2, canvas.height / 2);
+                return;
+            }
+
+            paddle1.y += paddle1.dy;
+            paddle2.y += paddle2.dy;
+
+            if (paddle1.y < 0) paddle1.y = 0;
+            if (paddle1.y + paddleHeight > canvas.height) paddle1.y = canvas.height - paddleHeight;
+            if (paddle2.y < 0) paddle2.y = 0;
+            if (paddle2.y + paddleHeight > canvas.height) paddle2.y = canvas.height - paddleHeight;
+
+            puck.x += puck.dx;
+            puck.y += puck.dy;
+
+            if (puck.x - puckRadius <= 0) {
+                score2++;
+                resetGame();
+            } else if (puck.x + puckRadius >= canvas.width) {
+                score1++;
+                resetGame();
+            }
+
+            if (puck.y - puckRadius <= 0 || puck.y + puckRadius >= canvas.height) {
+                puck.dy = -puck.dy;
+                increasePuckSpeed();
+            }
+
+            if (puck.x - puckRadius <= paddle1.x + paddleWidth &&
+                puck.y >= paddle1.y && puck.y <= paddle1.y + paddleHeight) {
+                puck.dx = -puck.dx;
+                increasePuckSpeed();
+            }
+
+            if (puck.x + puckRadius >= paddle2.x &&
+                puck.y >= paddle2.y && puck.y <= paddle2.y + paddleHeight) {
+                puck.dx = -puck.dx;
+                increasePuckSpeed();
+            }
+
+            drawPaddle(paddle1.x, paddle1.y, paddle1Color);
+            drawPaddle(paddle2.x, paddle2.y, paddle2Color);
+            drawPuck(puck.x, puck.y);
+            drawScoreboard();
+        }
+
+        const keyState = {
+            'w': false,
+            's': false,
+            'ArrowUp': false,
+            'ArrowDown': false
+        };
+
+        function keyDownHandler(e) {
+            if (e.key == "w" || e.key == "W") keyState['w'] = true;
+            if (e.key == "s" || e.key == "S") keyState['s'] = true;
+            if (e.key == "ArrowUp") keyState['ArrowUp'] = true;
+            if (e.key == "ArrowDown") keyState['ArrowDown'] = true;
+        }
+
+        function keyUpHandler(e) {
+            if (e.key == "w" || e.key == "W") keyState['w'] = false;
+            if (e.key == "s" || e.key == "S") keyState['s'] = false;
+            if (e.key == "ArrowUp") keyState['ArrowUp'] = false;
+            if (e.key == "ArrowDown") keyState['ArrowDown'] = false;
+        }
+
+        function updatePaddleMovement() {
+            paddle1.dy = keyState['w'] ? -5 : keyState['s'] ? 5 : 0;
+            paddle2.dy = keyState['ArrowUp'] ? -5 : keyState['ArrowDown'] ? 5 : 0;
+        }
+
+        function increasePuckSpeed() {
+            const factor = 0.1;
+            if (Math.abs(puck.dx) < 15) puck.dx += puck.dx > 0 ? factor : -factor;
+            if (Math.abs(puck.dy) < 15) puck.dy += puck.dy > 0 ? factor : -factor;
+        }
+
+        function resetGame() {
+            if (gameResetting) return;
+            gameResetting = true;
+
+            setTimeout(() => {
+                puck.x = canvas.width / 2;
+                puck.y = canvas.height / 2;
+                paddle1.y = canvas.height / 2 - paddleHeight / 2;
+                paddle2.y = canvas.height / 2 - paddleHeight / 2;
+
+                puck.dx = Math.random() > 0.5 ? 4 : -4;
+                puck.dy = Math.random() > 0.5 ? 4 : -4;
+
+                gameStarted = true;
+                gameResetting = false;
+            }, 2000);
+        }
+
+        document.addEventListener("keydown", keyDownHandler);
+        document.addEventListener("keyup", keyUpHandler);
+
+        function gameLoop() {
+            updatePaddleMovement();
+            drawGame();
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>

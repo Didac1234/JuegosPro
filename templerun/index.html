@@ -10,11 +10,22 @@
       font-family: 'Segoe UI', sans-serif;
       color: white;
       text-align: center;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      flex-direction: column;
+    }
+
+    #gameContainer {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
 
     canvas {
       display: block;
-      margin: 30px auto 10px auto;
       border: 3px solid white;
       background: radial-gradient(ellipse at center, #000 0%, #111 100%);
     }
@@ -26,10 +37,18 @@
       text-shadow: 2px 2px 10px #ff0000;
       margin-top: 20px;
       animation: fadeIn 1s ease-in-out;
+      background: rgba(255, 0, 0, 0.8);
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 0 15px rgba(255, 0, 0, 0.8);
+      text-align: center;
     }
 
     #gameOver p {
       margin: 10px 0;
+      font-size: 48px;
+      font-weight: bold;
+      color: #fff;
     }
 
     button {
@@ -62,7 +81,18 @@
       border: 3px solid #00ffe1;
       box-shadow: 0 0 10px rgba(0, 255, 255, 0.8), 0 0 15px rgba(0, 255, 255, 0.7);
       display: inline-block;
-      margin: 0 auto;
+    }
+
+    #scoreDisplay {
+      position: absolute;
+      top: 0;
+      width: 100%;
+      font-size: 30px;
+      color: #00ffe1;
+      font-weight: bold;
+      text-shadow: 0 0 10px rgba(0, 255, 255, 0.7), 0 0 20px rgba(0, 255, 255, 0.6);
+      text-align: center;
+      padding-top: 10px;
     }
 
     @keyframes fadeIn {
@@ -72,38 +102,47 @@
   </style>
 </head>
 <body>
-<canvas id="game" width="800" height="600"></canvas>
-<div id="ammoDisplay">💥 Balas: <span id="ammoCount">5</span>/5</div>
-<div id="gameOver">
-  <p>💀 Has muerto</p>
-  <button onclick="restartGame()">🔁 Reiniciar juego</button>
+<div id="gameContainer">
+  <canvas id="game" width="800" height="600"></canvas>
+  <div id="ammoDisplay">💥 Balas: <span id="ammoCount">5</span>/5</div>
+  <div id="scoreDisplay">Puntuación: 0</div>
+  <div id="gameOver">
+    <p>💀 Has muerto</p>
+    <button onclick="restartGame()">🔁 Reiniciar juego</button>
+  </div>
 </div>
+
 <script>
   // Configuración para las rutas de las imágenes
   const playerImagePath = "/templerun/imagenes/nave.png";  // Cambia esta ruta por la de tu imagen del jugador
-  const enemyImagePath = "/templerun/imagenes/naveenemiga.png";     // Cambia esta ruta por la de tu imagen de los enemigos
+  const enemyNormalImagePath = "/templerun/imagenes/naveenemiga.png";     // Imagen para las naves que no disparan
+  const enemyShooterImagePath = "/templerun/imagenes/navedisparo.png";  // Imagen para las naves que disparan
 
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d");
   const gameOverDiv = document.getElementById("gameOver");
   const ammoDisplay = document.getElementById("ammoCount");
+  const scoreDisplay = document.getElementById("scoreDisplay");
 
   let player, bullets, enemies, enemyBullets, keys, gameRunning, stars, ammo, maxAmmo = 5;
   let explosions = [];  // Array para almacenar las explosiones
+  let score = 0;  // Variable para la puntuación
 
   // Cargar las imágenes
   const playerImage = new Image();
-  const enemyImage = new Image();
+  const enemyNormalImage = new Image();
+  const enemyShooterImage = new Image();
   playerImage.src = playerImagePath;
-  enemyImage.src = enemyImagePath;
+  enemyNormalImage.src = enemyNormalImagePath;
+  enemyShooterImage.src = enemyShooterImagePath;
 
   function initGame() {
     player = {
-      x: canvas.width / 2 - 60,
+      x: canvas.width / 2 -50,
       y: canvas.height - 100,
       width: 60,
       height: 45,
-      speed: 6,
+      speed: 4,
     };
 
     bullets = [];
@@ -113,18 +152,21 @@
     ammo = maxAmmo;
     ammoDisplay.textContent = ammo;
     gameRunning = true;
+    score = 0;  // Reiniciar la puntuación
 
     stars = Array.from({ length: 100 }, () => ({
       x: Math.random() * canvas.width,
       y: Math.random() * canvas.height,
       size: Math.random() * 2,
-      speed: 0.5 + Math.random(),
+      speed: 1 + Math.random(),
     }));
+
+    scoreDisplay.textContent = `Puntuación: ${score}`;  // Mostrar puntuación inicial
   }
 
   function spawnEnemy() {
     if (!gameRunning) return;
-    const isShooter = Math.random() < 0.5;
+    const isShooter = Math.random() < 0.5;  // El 50% de los enemigos serán shooters
     const enemy = {
       x: Math.random() * (canvas.width - 60),
       y: -40,
@@ -138,7 +180,8 @@
     enemies.push(enemy);
   }
 
-  setInterval(spawnEnemy, 600); // más enemigos
+  // Reducir el intervalo para que los enemigos aparezcan más rápido
+  setInterval(spawnEnemy, 400); // Menor intervalo entre enemigos
 
   setInterval(() => {
     if (gameRunning && ammo < maxAmmo) {
@@ -170,7 +213,7 @@
   function drawBullets() {
     ctx.fillStyle = "red";
     bullets.forEach((b, i) => {
-      b.y -= 8;
+      b.y -= 11;  // Aumentar la velocidad de las balas
       ctx.fillRect(b.x, b.y, 3, 10);
       if (b.y < 0) bullets.splice(i, 1);
     });
@@ -178,7 +221,7 @@
     // Disparos enemigos
     ctx.fillStyle = "orange";
     enemyBullets.forEach((b, i) => {
-      b.y += 3;
+      b.y += 2;
       ctx.fillRect(b.x, b.y, 3, 10);
       if (b.y > canvas.height) enemyBullets.splice(i, 1);
     });
@@ -189,6 +232,7 @@
       if (!e.alive) return;
 
       e.y += e.speed;
+      const enemyImage = e.shooter ? enemyShooterImage : enemyNormalImage; // Cambiar imagen según el tipo de enemigo
       const aspectRatio = enemyImage.width / enemyImage.height;
       const newHeight = e.width / aspectRatio;
       ctx.drawImage(enemyImage, e.x, e.y, e.width, newHeight);
@@ -231,6 +275,8 @@
           explosions.push({ x: e.x + e.width / 2, y: e.y + e.height / 2, radius: 5, color: "orange" });
           e.alive = false;
           bullets.splice(bi, 1);
+          score += e.shooter ? 300 : 200;  // Aumentar la puntuación
+          scoreDisplay.textContent = `Puntuación: ${score}`;  // Mostrar la nueva puntuación
         }
       });
     });
@@ -304,4 +350,3 @@
 </script>
 </body>
 </html>
-

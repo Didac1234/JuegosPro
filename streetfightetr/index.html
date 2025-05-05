@@ -2,26 +2,76 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Street Fighter JS</title>
+  <title>Street Fighter JS Mejorado</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    canvas { background: #111; display: block; margin: 0 auto; }
-    body { background: #000; color: white; text-align: center; font-family: sans-serif; }
-    h1 { font-size: 40px; color: white; margin-top: 20px; }
-    #game { border: 2px solid #fff; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-    /* Barra de tiempo */
-    #timer { font-size: 30px; position: absolute; top: 20px; left: 50%; transform: translateX(-50%); color: white; }
+    body {
+      background: radial-gradient(ellipse at center, #1c1c1c 0%, #000000 100%);
+      color: #fff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      text-align: center;
+    }
 
-    /* Barra de salud */
-    .health-bar { width: 200px; height: 20px; background-color: #333; border-radius: 5px; position: absolute; }
-    .health { height: 100%; background-color: green; border-radius: 5px; }
+    h1 {
+      font-size: 3rem;
+      margin-top: 20px;
+      text-shadow: 2px 2px #ff0000;
+    }
+
+    canvas {
+      display: block;
+      margin: 30px auto;
+      border-radius: 10px;
+      box-shadow: 0 0 20px #ff0000;
+      background: url('https://www.smspower.org/uploads/Maps/StreetFighterII-SMS-BrazilBlanka.png') center/cover no-repeat;
+    }
+
+    #timer {
+      font-size: 2rem;
+      font-weight: bold;
+      margin-top: -10px;
+      color: #f0e130;
+      text-shadow: 2px 2px #000;
+    }
+
+    .health-container {
+      display: flex;
+      justify-content: space-between;
+      width: 800px;
+      margin: 10px auto;
+    }
+
+    .health-bar {
+      width: 200px;
+      height: 24px;
+      background-color: #444;
+      border: 2px solid #fff;
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 0 0 10px #000;
+    }
+
+    .health {
+      height: 100%;
+      background: linear-gradient(to right, #0f0, #8f8);
+      width: 100%;
+      transition: width 0.3s ease-in-out;
+    }
   </style>
 </head>
 <body>
   <h1>Street Fighter JS</h1>
+  <div id="timer">Tiempo: 60s</div>
+  <div class="health-container">
+    <div class="health-bar"><div id="player-health" class="health"></div></div>
+    <div class="health-bar"><div id="enemy-health" class="health"></div></div>
+  </div>
   <canvas id="game" width="800" height="400"></canvas>
-  <div id="timer"></div>
 
   <script>
     const canvas = document.getElementById("game");
@@ -29,21 +79,19 @@
 
     const gravity = 0.8;
     let animationId;
-    let timer = 60;  // 1 minuto
+    let timer = 60;
     let timerId;
     let gameOver = false;
 
-    // Cargar los sonidos
     const punchSound = new Audio('https://www.soundjay.com/button/beep-07.wav');
     const kickSound = new Audio('https://www.soundjay.com/button/beep-07.wav');
     const specialSound = new Audio('https://www.soundjay.com/button/beep-07.wav');
     const jumpSound = new Audio('https://www.soundjay.com/button/beep-07.wav');
     const gameOverSound = new Audio('https://www.soundjay.com/button/beep-07.wav');
 
-    // Sprites de los personajes
     const ryuSprites = {
       idle: '/streetfightetr/imagenes/Ken-hdstance.webp',
-      punch: 'https://wiki.supercombo.gg/images/thumb/d/de/SF6_Ryu_236p_charge.png/251px-SF6_Ryu_236p_charge.png',
+      punch: '/streetfightetr/imagenes/pngwing.com.png' ,
       kick: 'https://wiki.supercombo.gg/images/thumb/d/de/SF6_Ryu_236p_charge.png/251px-SF6_Ryu_236p_charge.png',
       special: 'https://wiki.supercombo.gg/images/thumb/d/de/SF6_Ryu_236p_charge.png/251px-SF6_Ryu_236p_charge.png'
     };
@@ -55,12 +103,11 @@
       special: 'https://www.spriters-resource.com/resources/sheets/10/11883.png'
     };
 
-    // Clase de luchador
     class Fighter {
       constructor({ position, imageSrcs, keys, attacks }) {
         this.position = position;
         this.velocity = { x: 0, y: 0 };
-        this.width = 80;
+        this.width = 120;
         this.height = 120;
         this.health = 100;
         this.keys = keys;
@@ -105,18 +152,14 @@
           this.attackType = null;
           this.currentImage.src = this.imageSrcs.idle;
         }, 200);
-        // Sonido del ataque
-        if (type === "punch") {
-          punchSound.play();
-        } else if (type === "kick") {
-          kickSound.play();
-        } else if (type === "special") {
-          specialSound.play();
-        }
+        if (type === "punch") punchSound.play();
+        if (type === "kick") kickSound.play();
+        if (type === "special") specialSound.play();
       }
 
       receiveDamage(amount) {
         this.health -= amount;
+        if (this.health < 0) this.health = 0;
         this.hitEffect = true;
       }
     }
@@ -125,69 +168,45 @@
       position: { x: 100, y: 0 },
       imageSrcs: ryuSprites,
       keys: { left: "a", right: "d", jump: "w", punch: "q", kick: "e", special: "r" },
-      attacks: { punch: 5, kick: 8, special: 12 }
+      attacks: { punch: 5, kick: 14, special: 26 }
     });
 
     const enemy = new Fighter({
       position: { x: 600, y: 0 },
       imageSrcs: kenSprites,
       keys: { left: "ArrowLeft", right: "ArrowRight", jump: "ArrowUp", punch: "1", kick: "2", special: "3" },
-      attacks: { punch: 6, kick: 9, special: 14 }
+      attacks: { punch: 6, kick: 12, special: 30 }
     });
 
     const keysPressed = {};
 
     function detectCollision(attacker, defender) {
       return (
-        attacker.position.x + attacker.width + 20 >= defender.position.x &&
+        attacker.position.x + attacker.width >= defender.position.x &&
         attacker.position.x <= defender.position.x + defender.width &&
-        attacker.position.y + 20 <= defender.position.y + defender.height &&
-        attacker.position.y + 20 >= defender.position.y
+        attacker.position.y + attacker.height >= defender.position.y
       );
     }
 
-    function drawHealthBar(fighter, x) {
-      ctx.fillStyle = "gray";
-      ctx.fillRect(x, 20, 200, 20);
-      ctx.fillStyle = "green";
-      ctx.fillRect(x, 20, 2 * fighter.health, 20);
-    }
-
-    function drawTimer() {
-      ctx.fillStyle = 'white';
-      ctx.font = '30px Arial';
-      ctx.fillText(`Tiempo: ${timer}s`, canvas.width / 2 - 60, 50);
+    function drawHealthBar(fighter, id) {
+      const el = document.getElementById(id);
+      el.style.width = `${fighter.health * 2}px`;
     }
 
     function checkWinCondition() {
-      if (player.health <= 0) {
+      if (player.health <= 0 || enemy.health <= 0 || timer <= 0) {
         gameOverSound.play();
-        ctx.fillStyle = 'white';
-        ctx.font = '40px Arial';
-        ctx.fillText('¡Ken gana!', canvas.width / 2 - 100, canvas.height / 2);
-        cancelAnimationFrame(animationId);
-        gameOver = true;
-      } else if (enemy.health <= 0) {
-        gameOverSound.play();
-        ctx.fillStyle = 'white';
-        ctx.font = '40px Arial';
-        ctx.fillText('¡Ryu gana!', canvas.width / 2 - 100, canvas.height / 2);
-        cancelAnimationFrame(animationId);
-        gameOver = true;
-      } else if (timer <= 0) {
-        if (player.health > enemy.health) {
-          ctx.fillStyle = 'white';
-          ctx.font = '40px Arial';
-          ctx.fillText('¡Ryu gana por tiempo!', canvas.width / 2 - 150, canvas.height / 2);
-        } else if (enemy.health > player.health) {
-          ctx.fillStyle = 'white';
-          ctx.font = '40px Arial';
-          ctx.fillText('¡Ken gana por tiempo!', canvas.width / 2 - 150, canvas.height / 2);
+        let message = '';
+        if (player.health === enemy.health) {
+          message = '¡Empate!';
+        } else if (player.health > enemy.health) {
+          message = '¡Ryu gana!';
         } else {
-          ctx.fillStyle = 'white';
-          ctx.font = '40px Arial';
-          ctx.fillText('¡Empate por tiempo!', canvas.width / 2 - 130, canvas.height / 2);
+          message = '¡Ken gana!';
         }
+        ctx.fillStyle = 'white';
+        ctx.font = '40px Arial';
+        ctx.fillText(message, canvas.width / 2 - 100, canvas.height / 2);
         cancelAnimationFrame(animationId);
         gameOver = true;
       }
@@ -212,10 +231,8 @@
       player.update();
       enemy.update();
 
-      drawHealthBar(player, 20);
-      drawHealthBar(enemy, canvas.width - 220);
-
-      drawTimer();
+      drawHealthBar(player, 'player-health');
+      drawHealthBar(enemy, 'enemy-health');
 
       player.velocity.x = 0;
       enemy.velocity.x = 0;
